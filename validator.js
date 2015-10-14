@@ -8,10 +8,32 @@
   var $err_pass_noUpper   = $($errors[2]);
   var $err_pass_noNum     = $($errors[3]);
 
-   // ಠ_ಠ
+  var emailValidated
+  var passwordValidated
+
+  // ಠ_ಠ
   var emailRegex = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;
 
 $(function(){
+
+  //evaluate field validation conditions and toggle error message visibility
+  //note: match condition and message array by index (would be better to use map)
+  function evaluate(conditions, messages) {
+    var results = []
+    conditions.forEach(function(condition, index) {
+      if(condition) {
+        messages[index].show();
+        results.push(false);
+      }
+      else {
+        messages[index].hide();
+        results.push(true);
+      }
+    });
+
+    //field validation passes only if all of the conditions evaluate to true
+    return $.inArray(false, results) === -1
+  }
 
   function validate(field) {
 
@@ -21,9 +43,10 @@ $(function(){
       console.log('validating email: ' + email);
 
       //validate email
-      if(!email.match(emailRegex)) $err_email_invalid.show();
+      var conditions = [(!email.match(emailRegex))]
+      var messages   = [$err_email_invalid]
 
-      else $err_email_invalid.hide();
+      emailValidated = evaluate(conditions, messages);
 
     }
     else if(field.attr('id') === $password.attr('id')) {
@@ -32,20 +55,29 @@ $(function(){
       console.log('validating password: ' + password);
 
       //validate password
-      if(password.length < 8) $err_pass_short.show();
-      else $err_pass_short.hide();
+      var conditions = [(password.length < 8), (!password.match(/[A-Z]/)), (!password.match(/\d+/))]
+      var messages   = [$err_pass_short      , $err_pass_noUpper         , $err_pass_noNum]
 
-      if(!password.match(/[A-Z]/)) $err_pass_noUpper.show();
-      else $err_pass_noUpper.hide();
-
-      if(!password.match(/\d+/)) $err_pass_noNum.show();
-      else $err_pass_noNum.hide();
+      passwordValidated = evaluate(conditions, messages);
 
     }
 
   }
 
-  //bind focusout validate event
-  $(':input').focusout(function() { validate($(this)) });
+  //attach event handlers to input fields
+  $(':input')
+    //validate on focusout
+    .focusout(function() { validate($(this)) })
+    //validate focused field on enter keydown
+    .keydown(function (e) {
+      var key = e.which;
+      if(key == 13)  // 'enter' key code
+        validate($(this));
+    })
+    //if validation has failed retry validation on every keypress
+    .keyup(function(e) {
+      if(emailValidated === false) validate($email);
+      if(passwordValidated === false) validate($password);
+    })
 
 });
